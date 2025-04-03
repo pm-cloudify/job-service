@@ -12,28 +12,33 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+// MessageBroker struct
 type MessageBroker struct {
 	conn *amqp.Connection
 	ch   *amqp.Channel
 	q    amqp.Queue
 }
 
-func failOnError(err error, msg string) {
-	if err != nil {
-		log.Panicf("%s # %s\n", msg, err.Error())
-	}
+// close message broker connection
+func (message_broker *MessageBroker) Close() {
+	message_broker.ch.Close()
+	message_broker.conn.Close()
+	log.Printf("closed message broker connection\n")
 }
 
-func InitMessageBroker(addr, user, pass, q_name string) *MessageBroker {
+// InitMessageBroker initializes a new message broker connection
+func InitMessageBroker(addr, user, pass, q_name string) (*MessageBroker, error) {
 	url := fmt.Sprintf("amqp://%s:%s@%s", user, pass, addr)
 
 	conn, err := amqp.Dial(url)
-	failOnError(err, "failed to dial")
-	defer conn.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to RabbitMQ: %w", err)
+	}
 
 	ch, err := conn.Channel()
-	failOnError(err, "failed to open channel")
-	defer ch.Close()
+	if err != nil {
+		return nil, fmt.Errorf("failed to open a channel: %w", err)
+	}
 
 	q, err := ch.QueueDeclare(
 		q_name,
@@ -43,14 +48,18 @@ func InitMessageBroker(addr, user, pass, q_name string) *MessageBroker {
 		false,
 		nil,
 	)
-	failOnError(err, "failed to declare a queue")
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to declare a queue: %w", err)
+	}
 
 	return &MessageBroker{
 		conn, ch, q,
-	}
+	}, nil
 }
 
-func ProduceTextMsg(mb *MessageBroker, msg string) {
+// ProduceTextMsg sends a text message to the queue
+func ProduceTextMsg(mb *MessageBroker, msg string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -65,11 +74,16 @@ func ProduceTextMsg(mb *MessageBroker, msg string) {
 			Body:        []byte(msg),
 		},
 	)
-	failOnError(err, "failed to publish")
+	if err != nil {
+		return fmt.Errorf("failed to publish a message: %w", err)
+	}
+
 	log.Printf("sent msg: %s\n", msg)
+	return nil
 }
 
-func RunConsumer(mb *MessageBroker, handler func(data []byte)) {
+// runs a consumer that listens for messages on the queue
+func RunConsumer(mb *MessageBroker, handler func(data []byte)) error {
 	msgs, err := mb.ch.Consume(
 		mb.q.Name,
 		"",
@@ -79,7 +93,9 @@ func RunConsumer(mb *MessageBroker, handler func(data []byte)) {
 		false,
 		nil,
 	)
-	failOnError(err, "consumer register failed")
+	if err != nil {
+		return fmt.Errorf("failed to register a consumer: %w", err)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
@@ -94,4 +110,5 @@ func RunConsumer(mb *MessageBroker, handler func(data []byte)) {
 	log.Printf("waiting for message...\n")
 	<-ctx.Done()
 	log.Printf("shuting down consumer...\n")
+	return nil
 }
