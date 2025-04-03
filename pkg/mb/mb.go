@@ -1,9 +1,12 @@
+// a package for working with rabbit mq
 package mb
 
 import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -66,7 +69,7 @@ func ProduceTextMsg(mb *MessageBroker, msg string) {
 	log.Printf("sent msg: %s\n", msg)
 }
 
-func AttachConsumer(mb *MessageBroker, handler func(data []byte)) {
+func RunConsumer(mb *MessageBroker, handler func(data []byte)) {
 	msgs, err := mb.ch.Consume(
 		mb.q.Name,
 		"",
@@ -78,7 +81,8 @@ func AttachConsumer(mb *MessageBroker, handler func(data []byte)) {
 	)
 	failOnError(err, "consumer register failed")
 
-	var forever chan struct{}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
 	go func() {
 		for d := range msgs {
@@ -88,5 +92,6 @@ func AttachConsumer(mb *MessageBroker, handler func(data []byte)) {
 	}()
 
 	log.Printf("waiting for message...\n")
-	<-forever
+	<-ctx.Done()
+	log.Printf("shuting down consumer...\n")
 }
