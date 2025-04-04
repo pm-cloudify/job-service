@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/pm-cloudify/job-service/internal/service"
-	"github.com/pm-cloudify/job-service/pkg/config_loader"
-	"github.com/pm-cloudify/job-service/pkg/mb"
+	"github.com/pm-cloudify/shared-libs/config_loader"
+	"github.com/pm-cloudify/shared-libs/mb"
 )
 
 func main() {
