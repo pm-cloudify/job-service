@@ -1,0 +1,1 @@
+go run ./cmd/job-service/main.go

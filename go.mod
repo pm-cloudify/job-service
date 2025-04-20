@@ -4,6 +4,8 @@ go 1.24.1
 
 require github.com/pm-cloudify/shared-libs v1.0.1
 
+replace github.com/pm-cloudify/shared-libs => ../shared-libs
+
 require (
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
