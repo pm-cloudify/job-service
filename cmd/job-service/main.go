@@ -1,25 +1,25 @@
 package main
 
 import (
+	"fmt"
 	"log"
-	"os"
 
+	"github.com/pm-cloudify/job-service/internal/config"
 	"github.com/pm-cloudify/job-service/internal/service"
-	"github.com/pm-cloudify/shared-libs/config_loader"
 	"github.com/pm-cloudify/shared-libs/mb"
 )
 
 func main() {
-	config_loader.LoadEnv("./configs")
+	fmt.Println("launching...	")
 
-	var (
-		addr   = os.Getenv("RMQ_ADDR")
-		user   = os.Getenv("RMQ_USER")
-		pass   = os.Getenv("RMQ_PASS")
-		q_name = os.Getenv("RMQ_Q_NAME")
+	config.LoadConfigs()
+
+	app_mb, err := mb.InitMessageBroker(
+		config.AppConfigs.RMQ_Addr,
+		config.AppConfigs.RMQ_User,
+		config.AppConfigs.RMQ_Pass,
+		config.AppConfigs.RMQ_Q_Name,
 	)
-
-	app_mb, err := mb.InitMessageBroker(addr, user, pass, q_name)
 	if err != nil {
 		log.Fatalf("Failed to initialize message broker: %v", err)
 	}
